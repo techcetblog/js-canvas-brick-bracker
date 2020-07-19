@@ -133,7 +133,7 @@ if (this.position.y + this.size > this.gameHeight || this.position.y < 0) {
 
 ## Refactoring to the game class
 
-Let's do a little bit of refactoring, right now we are passing two parameters to both the ball and the paddle. We are passing game width and game height, if we're going to pass more parameters like the ball might might need to know where the paddle is.
+Let's do a little bit of refactoring, right now we are passing two parameters to both the ball and the paddle. We are passing game width and game height, if we're going to pass more parameters like the ball might need to know where the paddle is.
 
 Now let's create a new file called `game.js` and as usual create a game class with export default keyword. So, this class is going to be in charge of managing all this for us. So, let's go inside the `index js`, now grab three lines of code (ball, paddle and inputHandler) and move them into our new `game` class.
 
@@ -145,18 +145,19 @@ let ball = new Ball(GAME_WIDTH, GAME_HEIGHT);
 new InputHanlder(paddle);
 ```
 
-So, create a constructor method, pass two arguments `gameWidth` and `gameHeight`. And Inside the method we can simply paste our code. So, right above the `let paddle...` create a new line and add `this.gameWidth = gameWidth` as well as `this.gameHeight = gameHeight`. So, inside the `new Paddle` and `new Ball` we can remove those parameters we wrote earlier and write `this` parameter inside the parenthesis. Let's move this lines of code inside our new method called `start`.
+So, create a constructor method, pass two arguments `gameWidth` and `gameHeight`. And Inside the constructor method we can simply add `this.gameWidth = gameWidth` as well as `this.gameHeight = gameHeight`.
+Now create a new method called start and inside it we can simply paste our code. Now, inside the `new Paddle` and `new Ball` we can remove `gameWidth` and `gameHeight` parameters we wrote earlier and write `this` instance parameter inside their parenthesis. instead of using let variable we are going to change theme to use `this` keyword like below. So, when the game is ready to start we will instantiate this objects. 
 
 ```js
 start() {
-    let paddle = new Paddle(this);
-    let ball = new Ball(this);
+    this.paddle = new Paddle(this);
+    this.ball = new Ball(this);
 
-    new InputHanlder(paddle);
+    new InputHanlder(this.paddle);
 }
 ```
 
-Now let's go ahead and grab those imported classes and move them inside our game js file above the class.
+Now let's go ahead and grab those imported classes and move them inside our `game js` file above the class.
 
 ```js
 // move these codes to `game js` file above the class
@@ -166,3 +167,110 @@ import InputHanlder from './input';
 ```
 
 Now go back to our paddle and ball class and do some necessary changes. So, open the `ball js` file frist, then instead of taking gameWidth and gameHeight we're just going to take the game object. Then change `gameWidth` to `game.gameWidth` as well as `gameHeight` to `game.gameHeight`.
+
+Now go back to our `index js` file, import the game class and create a game object by instantiating the Game class and pass `GAME_WIDTH` and `GAME_HEIGHT` parameters into it.
+
+Then start the game by calling start method like this: `game.start()`.
+
+Now grab four lines of code from `paddle.update...` to `ball.draw...` and cut theme using `ctrl+x` and then write `game.update()` and `game.draw()` which we didn't created yet.
+
+So, go back to our game class, create two methods inside it, paste those copied content inside the update method. But here we are just going to keep only those lines which has `update` methods and put those remaining lines of code into our `draw` method like below
+
+```js
+update() {
+  paddle.update(deltaTime);
+  ball.update(deltaTime);
+}
+
+draw() {
+  paddle.draw(ctx);
+  ball.draw(ctx);
+}
+```
+
+After then add `this` keyword before paddle and ball. Also pass the `deltaTime` argument inside the update method and `ctx` inside our draw method. Then go back to `index js` file then add deltaTime parameter inside the `game.update` method call and pass ctx parameter inside the `game.draw` method call.
+
+Now let's create a game object inside the start method and as a value we can use an array and inside the array we can pass this.ball and as well as this.paddle.
+
+```js
+this.gameObject = [this.ball, this.paddle];
+```
+
+Then inside the update mthod we can use ES6 forEach method on `this.gameObject` to loop through it's values and call their update method.
+
+```js
+this.gameObjects.forEach(obj => obj.update(deltaTime));
+```
+
+Then remove previous codes inside the update method:
+```js
+// remove this lines
+this.paddle.update(deltaTime);
+this.ball.update(deltaTime);
+```
+
+Now do same thing with draw and remove previous lines of codes:
+```js
+this.gameObjects.forEach(obj => obj.draw(ctx)); 
+```
+
+## Collision Detection between ball and paddle
+Inside our ball class we've given the game object, now let's just make sure we have the game object avaialable in our ball class. So, make a game property inside the constructor method and assign the game object we have passed in.
+
+```js
+this.game = game;
+```
+Now we can use this game object in any other game methods. Just to test if this works or not, we can console log the x position of our paddle object inside our update method.
+
+```js
+console.log(this.game.paddle.position.x);
+```
+
+So, in every update we can see the where the paddle object is in our console even though we are in ball object. So open up inspect element and move the paddle left and right and we can see the current x position of paddle object. Now let's remove the console log. 
+
+Now our update method is checking if the ball is hitting a wall. So, we can make a descriptive comment for the first checking and second checking although it is not recommended.
+
+```js
+// wall on left or right
+if (this.position.x + this.size > this.gameWidth || this.position.x < 0)
+  this.speed.x = -this.speed.x;
+
+// wall on top or bottom
+if (this.position.y + this.size > this.gameHeight || this.position.y < 0)
+  this.speed.y = -this.speed.y;
+```
+
+Now make another comment `// check collision with paddle`
+Then make a `bottomOfBall` variable and assign the value `this.position.y + this.size` into it.
+Make another variable called `topOfPaddle` and assign the value as `this.game.paddle.position.y - this.size`.
+After that make a conditional statement if `bottomOfBall` is greater than or equal to `topOfPaddle` and inside the if block we are reversing the y speed of the ball and setting the y position of the ball as `this.game.paddle.position.y - this.size`.
+
+```js
+let bottomOfBall = this.position.y + this.size;
+let topOfPaddle  = this.game.paddle.position.y - this.size;
+
+if (bottomOfBall >= topOfPaddle) {
+  this.speed.y = -this.speed.y;
+  this.position.y = this.game.paddle.position.y - this.size;
+}
+```
+
+Now take a look on the browser if the ball bounces off when it is hitting the paddle or not. But we have an issue right now. We need to know if the ball is actually hitting within the bounds of the paddle. Let's write another two variables after the `topOfPaddle` called `leftSideOfPaddle` then assign the value of x position of the paddle and `rightSideOfPaddle` to the value of x position of the paddle including the width of the paddle.
+
+```js
+let leftSideOfPaddle = this.game.paddle.position.x;
+let rightSideOfPaddle = this.game.paddle.position.x + this.game.paddle.width;
+```
+
+Now inside our recently created conditional statement we can include two more condition, so we need to check if x position of the ball is greater than or equal to the `leftSideOfPaddle` and another condition would be if x position of the ball including it's size is less than or equal to the `rightSideOfPaddle` variable. So this should be:
+
+```js
+if (bottomOfBall >= topOfPaddle
+  && this.position.x >= leftSideOfPaddle
+  && this.position.x + this.size <= rightSideOfPaddle
+) { ... }
+```
+
+So, let's try it out. See if we can stil bounce the ball off the paddle. So, we now have a basic collision between the ball and the paddle working and we can bounce the ball back towards the bricks that we will build soon.
+
+## Loading Bricks
